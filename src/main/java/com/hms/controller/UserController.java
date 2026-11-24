@@ -5,7 +5,6 @@ import com.hms.payload.LoginDto;
 import com.hms.payload.TokenDto;
 import com.hms.repository.AppUserRepository;
 import com.hms.service.UserService;
-import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCrypt;
@@ -16,8 +15,9 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
-    private AppUserRepository appUserRepository;
-    private UserService userService;
+
+    private final AppUserRepository appUserRepository;
+    private final UserService userService;
 
     public UserController(AppUserRepository appUserRepository, UserService userService) {
         this.appUserRepository = appUserRepository;
@@ -25,74 +25,53 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> createUser(
-        @RequestBody AppUser user
-    ){
-        Optional<AppUser> opUsername =
-                appUserRepository.findByUsername(user.getUsername());
-
-        if(opUsername.isPresent()){
-            return new ResponseEntity<>("Username already taken", HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<?> createUser(@RequestBody AppUser user) {
+        if (appUserRepository.findByUsername(user.getUsername()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken");
         }
 
-        Optional<AppUser> opEmail =
-                appUserRepository.findByEmail(user.getEmail());
-
-        if(opEmail.isPresent()){
-            return new ResponseEntity<>("Email already taken", HttpStatus.INTERNAL_SERVER_ERROR);
+        if (appUserRepository.findByEmail(user.getEmail()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already taken");
         }
 
-        String encryptedPasword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(5));
-        user.setPassword(encryptedPasword);
+        user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(10)));
         user.setRole("ROLE_USER");
         AppUser savedUser = appUserRepository.save(user);
-        return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
     @GetMapping("/message")
-    public String getMessage(){
+    public String getMessage() {
         return "hello";
     }
-    //http://localhost:8080/login
+
     @PostMapping("/login")
-    public ResponseEntity<?> login(
-          @RequestBody  LoginDto dto
-    ){
+    public ResponseEntity<?> login(@RequestBody LoginDto dto) {
         String token = userService.verifyLogin(dto);
-        if(token!=null){
-            TokenDto tokenDto = new TokenDto();
-            tokenDto.setToken(token);
-            tokenDto.setType("JWT");
-            return new ResponseEntity<>(tokenDto, HttpStatus.OK);
-        }else{
-            return new ResponseEntity<>("Invalid username/password", HttpStatus.FORBIDDEN);
+        if (token == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid username/password");
         }
+
+        TokenDto tokenDto = new TokenDto();
+        tokenDto.setToken(token);
+        tokenDto.setType("Bearer");
+        return ResponseEntity.ok(tokenDto);
     }
+
     @PostMapping("/signup-property-owner")
-    public ResponseEntity<?> createPropertyOwner(
-            @RequestBody AppUser user
-    ) {
-        Optional<AppUser> opUsername =
-                appUserRepository.findByUsername(user.getUsername());
-
-        if (opUsername.isPresent()) {
-            return new ResponseEntity<>("Username already taken", HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<?> createPropertyOwner(@RequestBody AppUser user) {
+        if (appUserRepository.findByUsername(user.getUsername()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken");
         }
 
-        Optional<AppUser> opEmail =
-                appUserRepository.findByEmail(user.getEmail());
-
-        if (opEmail.isPresent()) {
-            return new ResponseEntity<>("Email already taken", HttpStatus.INTERNAL_SERVER_ERROR);
+        if (appUserRepository.findByEmail(user.getEmail()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email already taken");
         }
 
-
-        String encryptedPasword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(5));
-        user.setPassword(encryptedPasword);
+        user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(10)));
         user.setRole("ROLE_OWNER");
         AppUser savedUser = appUserRepository.save(user);
-        return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
-    }
-
-
+}

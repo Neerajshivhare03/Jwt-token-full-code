@@ -30,6 +30,8 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      - name: Make Maven Wrapper executable
+        run: chmod +x mvnw
       - name: Build and test
         run: ./mvnw --batch-mode clean verify
         env:

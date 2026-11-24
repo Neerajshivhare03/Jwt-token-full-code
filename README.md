@@ -1,76 +1,73 @@
-# JWT Authentication - Spring Boot
+# JWT Authentication API — Spring Boot
 
-A Spring Boot application demonstrating user management and JSON Web Token (JWT)-based authentication.
+A Java 17 / Spring Boot REST API demonstrating signup, login, role-based authorization, and stateless JWT authentication.
 
 ## Technology stack
 
 - Java 17
 - Spring Boot 3.0.0
-- Spring Web
-- Spring Data JPA
-- Spring Security
+- Spring Web, Spring Data JPA, Spring Security
 - MySQL
 - Auth0 Java JWT 3.3.0
-- Maven
+- Maven Wrapper
 
 ## Project structure
 
 ```text
-src/
-  main/
-    java/com/hms/
-      confi/
-        JWTFilter.java
-        SecurityConfig.java
-      controller/
-        CountryController.java
-        UserController.java
-      entity/
-        AppUser.java
-      payload/
-        LoginDto.java
-        TokenDto.java
-      repository/
-        AppUserRepository.java
-      service/
-        JWTService.java
-        UserService.java
-      HmsApplication.java
-    resources/
-      application.properties
-  test/
-pom.xml
-mvnw
-mvnw.cmd
+src/main/java/com/hms/
+  confi/       # JWT filter and security configuration
+  controller/  # User and country REST controllers
+  entity/      # JPA user entity
+  payload/     # Login and token DTOs
+  repository/  # Spring Data repositories
+  service/     # Login and JWT services
+src/main/resources/application.properties
+src/test/java/
 ```
 
 ## Prerequisites
 
 - JDK 17
-- MySQL
-- Maven (optional; the Maven Wrapper is included)
+- MySQL 8+
+- Maven is optional; the Maven Wrapper is included
 
-## Configuration
+## Environment configuration
 
-1. Create a local MySQL database for this application.
-2. Configure the datasource in `src/main/resources/application.properties`.
-3. Configure a strong JWT signing secret using your local configuration.
-4. Keep database passwords and JWT secrets out of source control. Use environment variables or a local, untracked configuration file.
+The application reads secrets from environment variables. Do not commit real database passwords or JWT signing keys.
 
-Do not reuse the example project with production credentials or a hard-coded development secret.
+| Variable | Purpose | Local example |
+|---|---|---|
+| DB_URL | JDBC connection | jdbc:mysql://localhost:3306/hmsdb |
+| DB_USERNAME | Database user | root |
+| DB_PASSWORD | Database password | your-local-password |
+| JWT_SECRET | HMAC signing key, at least 32 characters | generate a unique random secret |
+| JWT_ISSUER | Token issuer | hms-api |
+| JWT_EXPIRY_MS | Token lifetime in milliseconds | 86400000 |
+
+Create the database before starting the app:
+
+```sql
+CREATE DATABASE hmsdb;
+```
+
+Set the environment variables in your terminal or IDE Run Configuration. An example placeholder file is available in `.env.example`; Spring Boot does not automatically load that file, so export the values or configure them in your IDE.
 
 ## Run locally
 
-On macOS/Linux:
-
-```bash
-./mvnw spring-boot:run
-```
-
-On Windows:
+Windows:
 
 ```bat
+set DB_PASSWORD=your-local-password
+set JWT_SECRET=replace-with-a-random-secret-of-at-least-32-characters
 mvnw.cmd spring-boot:run
+```
+
+macOS/Linux:
+
+```bash
+export DB_PASSWORD='your-local-password'
+export JWT_SECRET='replace-with-a-random-secret-of-at-least-32-characters'
+./mvnw spring-boot:run
 ```
 
 Build and run tests:
@@ -79,24 +76,60 @@ Build and run tests:
 ./mvnw clean verify
 ```
 
-## Main areas
+On Windows use `mvnw.cmd clean verify`.
 
-- User and country REST controllers
-- User persistence with Spring Data JPA
-- Spring Security configuration
-- JWT request filter and token service
-- Login and token payload DTOs
+## API endpoints
 
-Check the controller mappings in the source code for the exact API paths and request formats.
+Base URL: `http://localhost:8080`
 
-## Recommended next improvements
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/v1/users/signup` | Public | Register a standard user |
+| POST | `/api/v1/users/signup-property-owner` | Public | Register a property owner |
+| POST | `/api/v1/users/login` | Public | Verify credentials and receive a JWT |
+| GET | `/api/v1/users/message` | JWT required | Example protected endpoint |
+| POST | `/api/v1/country/addCountry` | OWNER or ADMIN | Example role-protected endpoint |
 
-- Add API examples and a Postman collection.
-- Add tests for login, token validation, and protected endpoints.
-- Add request validation and centralized exception handling.
-- Document the exact API contract and authentication flow.
-- Review JWT expiry, signing algorithm, and secret management before deployment.
+### Signup request
 
-## Status
+```json
+{
+  "username": "neeraj",
+  "email": "neeraj@example.com",
+  "name": "Neeraj Kumar",
+  "password": "Use-A-Strong-Password"
+}
+```
 
-This repository is a learning/demo project. Review and test the security configuration before using it in any real application.
+### Login request
+
+```json
+{
+  "username": "neeraj",
+  "password": "Use-A-Strong-Password"
+}
+```
+
+The login response contains a token. Send it on protected requests:
+
+```http
+Authorization: Bearer <token>
+```
+
+## Security notes
+
+- Password hashes are excluded from JSON responses.
+- New passwords are hashed with BCrypt strength 10.
+- JWTs are verified for signature and issuer and include an expiry.
+- The API uses stateless Spring Security sessions.
+- The signing key and database password must be supplied outside source control.
+- This demo's public property-owner signup endpoint grants the OWNER role to anyone who calls it. **Do not expose that endpoint in a real application**; owner/admin roles must be granted only by a trusted administrator or verified workflow.
+- Existing users created with older BCrypt hashes can still log in; BCrypt stores its work factor in each hash.
+
+## Tests
+
+The JWT service unit tests cover token generation, successful verification, signature tampering, and blank usernames. Run `./mvnw clean verify`.
+
+## Scope
+
+This is a learning project, not a production-ready identity provider. Before production use, add DTO validation, rate limiting, refresh-token/revocation strategy, centralized error handling, integration tests, and controlled role provisioning. Consider upgrading the older Spring Boot and JWT library versions after compatibility testing.

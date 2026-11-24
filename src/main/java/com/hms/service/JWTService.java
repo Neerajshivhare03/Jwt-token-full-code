@@ -35,7 +35,11 @@ public class JWTService {
         if (expiryTime <= 0) {
             throw new IllegalStateException("JWT expiry duration must be positive");
         }
-        algorithm = Algorithm.HMAC256(algorithmKey);
+        try {
+            algorithm = Algorithm.HMAC256(algorithmKey);
+        } catch (java.io.UnsupportedEncodingException ex) {
+            throw new IllegalStateException("Unable to initialize JWT signing algorithm", ex);
+        }
     }
 
     public String generateToken(String username) {

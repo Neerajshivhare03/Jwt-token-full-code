@@ -1,0 +1,40 @@
+name: Maven CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: hmsdb
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Build and test
+        run: ./mvnw --batch-mode clean verify
+        env:
+          DB_URL: jdbc:mysql://127.0.0.1:3306/hmsdb
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          JWT_SECRET: ci-only-secret-key-that-is-long-enough-123456
+          JWT_ISSUER: hms-ci

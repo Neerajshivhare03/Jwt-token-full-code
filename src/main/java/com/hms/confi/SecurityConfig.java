@@ -27,9 +27,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                                 "/api/v1/users/login",
-                                "/api/v1/users/signup",
-                                "/api/v1/users/signup-property-owner"
+                                "/api/v1/users/signup"
                         ).permitAll()
+                        .requestMatchers("/api/v1/users/signup-property-owner")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/v1/country/addCountry")
                         .hasAnyRole("OWNER", "ADMIN")
                         .anyRequest().authenticated()
